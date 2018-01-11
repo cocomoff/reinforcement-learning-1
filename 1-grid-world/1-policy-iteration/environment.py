@@ -26,43 +26,46 @@ class GraphicDisplay(tk.Tk):
         self.evaluation_count = 0
         self.improvement_count = 0
         self.is_moving = 0
+        self.text_visble = tk.IntVar()
         (self.up, self.down, self.left, self.right), self.shapes = self.load_images()
         self.canvas = self._build_canvas()
-        self.text_reward(2, 2, "R : 1.0")
-        self.text_reward(1, 2, "R : -1.0")
-        self.text_reward(2, 1, "R : -1.0")
 
     def _build_canvas(self):
         canvas = tk.Canvas(self, bg='white',
-                           height=HEIGHT * UNIT,
+                           height=HEIGHT * UNIT + 50,
                            width=WIDTH * UNIT)
         # buttons
         iteration_button = Button(self, text="Evaluate",
                                   command=self.evaluate_policy)
         iteration_button.configure(width=10, activebackground="#33B5E5")
-        canvas.create_window(WIDTH * UNIT * 0.13, HEIGHT * UNIT + 10,
+        canvas.create_window(WIDTH * UNIT * 0.13, HEIGHT * UNIT + 20,
                              window=iteration_button)
         policy_button = Button(self, text="Improve",
                                command=self.improve_policy)
         policy_button.configure(width=10, activebackground="#33B5E5")
-        canvas.create_window(WIDTH * UNIT * 0.37, HEIGHT * UNIT + 10,
+        canvas.create_window(WIDTH * UNIT * 0.37, HEIGHT * UNIT + 20,
                              window=policy_button)
         policy_button = Button(self, text="move", command=self.move_by_policy)
         policy_button.configure(width=10, activebackground="#33B5E5")
-        canvas.create_window(WIDTH * UNIT * 0.62, HEIGHT * UNIT + 10,
+        canvas.create_window(WIDTH * UNIT * 0.62, HEIGHT * UNIT + 20,
                              window=policy_button)
         policy_button = Button(self, text="reset", command=self.reset)
         policy_button.configure(width=10, activebackground="#33B5E5")
-        canvas.create_window(WIDTH * UNIT * 0.87, HEIGHT * UNIT + 10,
+        canvas.create_window(WIDTH * UNIT * 0.87, HEIGHT * UNIT + 20,
                              window=policy_button)
+        reward_checkbutton = tk.Checkbutton(self, text="show text",
+                                            command = self.print_texts, variable=self.text_visble)
+        canvas.create_window(WIDTH*UNIT*0.13, HEIGHT*UNIT + 40, window=reward_checkbutton)
 
         # create grids
         for col in range(0, WIDTH * UNIT, UNIT):  # 0~400 by 80
             x0, y0, x1, y1 = col, 0, col, HEIGHT * UNIT
             canvas.create_line(x0, y0, x1, y1)
+        canvas.create_line(WIDTH * UNIT, 0, WIDTH * UNIT, HEIGHT * UNIT)
         for row in range(0, HEIGHT * UNIT, UNIT):  # 0~400 by 80
             x0, y0, x1, y1 = 0, row, HEIGHT * UNIT, row
             canvas.create_line(x0, y0, x1, y1)
+        canvas.create_line(0, HEIGHT * UNIT, WIDTH * UNIT, HEIGHT * UNIT)
 
         # add img to canvas
         self.rectangle = canvas.create_image(50, 50, image=self.shapes[0])
@@ -175,10 +178,45 @@ class GraphicDisplay(tk.Tk):
             self.arrows.append(self.canvas.create_image(origin_x, origin_y,
                                                         image=self.right))
 
+    def text_policy(self, col, row, policy, font='Helvetica', size=10,
+                    style='normal', anchor="nw"):
+        if col == 2 and row == 2:
+            return
+
+        font = (font, str(size), style)
+        if policy[0] > 0:  # up
+            origin_x, origin_y = 35 + (UNIT * row), 10 + (UNIT * col)
+            text = self.canvas.create_text(origin_x, origin_y, fill="green",
+                   text="{}".format(round(policy[0],2)),font=font, anchor=anchor)
+            self.texts.append(text)
+
+        if policy[1] > 0:  # down
+            origin_x, origin_y = 35 + (UNIT * row), 90 + (UNIT * col)
+            text = self.canvas.create_text(origin_x, origin_y, fill="green",
+                   text="{}".format(round(policy[1],2)), font=font, anchor=anchor)
+            self.texts.append(text)
+        if policy[2] > 0:  # left
+            origin_x, origin_y = 10 + (UNIT * row), 50 + (UNIT * col)
+            text = self.canvas.create_text(origin_x, origin_y, fill="green",
+                   text="{}".format(round(policy[2],2)),font=font, anchor=anchor)
+            self.texts.append(text)
+
+        if policy[3] > 0:  # right
+            origin_x, origin_y = 70 + (UNIT * row), 50 + (UNIT * col)
+            text = self.canvas.create_text(origin_x, origin_y, fill="green",
+                   text="{}".format(round(policy[3],2)), font=font, anchor=anchor)
+            self.texts.append(text)
+
+
     def draw_from_policy(self, policy_table):
         for i in range(HEIGHT):
             for j in range(WIDTH):
                 self.draw_one_arrow(i, j, policy_table[i][j])
+
+    def print_policy_table(self, policy_table):
+        for i in range(HEIGHT):
+            for j in range(WIDTH):
+                self.text_policy(i, j, policy_table[i][j])
 
     def print_value_table(self, value_table):
         for i in range(WIDTH):
@@ -204,6 +242,20 @@ class GraphicDisplay(tk.Tk):
         self.agent.policy_improvement()
         self.draw_from_policy(self.agent.policy_table)
 
+    def print_texts(self):
+        self.print_value_table(self.agent.value_table)
+        self.print_policy_table(self.agent.policy_table)
+        for i in range(WIDTH):
+            for j in range(HEIGHT):
+                self.text_reward(i, j, "R : {}".format(self.env.reward[i][j]))
+
+
+        if (not self.text_visble.get()):
+            self.clear_texts()
+
+    def clear_texts(self):
+        for i in self.texts:
+            self.canvas.delete(i)
 
 class Env:
     def __init__(self):
